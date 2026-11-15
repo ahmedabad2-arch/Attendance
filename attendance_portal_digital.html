@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Field Attendance Portal / अटेंडेंस पोर्टल</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #121c2f;
+    --panel2: #172540;
+    --line: #24365a;
+    --text: #e6eefc;
+    --muted: #8aa0c0;
+    --cyan: #22d3ee;
+    --cyan-soft: rgba(34, 211, 238, .12);
+    --mint: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --red-soft: rgba(248, 113, 113, .12);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Hind', Arial, sans-serif;
+    padding-bottom: 150px;
+    background-image: radial-gradient(circle at 1px 1px, rgba(138,160,192,.10) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar { position: sticky; top: 0; z-index: 30; background: rgba(11,18,32,.94); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; overflow: hidden; }
+  .topbar::after { /* one-time scan line */
+    content: ""; position: absolute; top: 0; bottom: 0; width: 60px; left: -80px;
+    background: linear-gradient(90deg, transparent, rgba(34,211,238,.35), transparent);
+    animation: scan 1.6s ease-out .3s 1 forwards;
+  }
+  @keyframes scan { to { left: 110%; } }
+  .topbar-inner { max-width: 560px; margin: auto; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .topbar h1 { margin: 0; font-family: 'Space Grotesk', 'Hind', sans-serif; font-size: 18px; line-height: 1.2; }
+  .topbar h1 small { display: block; font-family: 'Hind', sans-serif; font-weight: 500; font-size: 12.5px; color: var(--muted); }
+  .clock { text-align: right; font-family: var(--mono); font-size: 13px; color: var(--cyan); line-height: 1.3; white-space: nowrap; }
+  .clock span { display: block; font-size: 11px; color: var(--muted); }
+  .net { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .net i { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+  .net.off i { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .progress { display: flex; gap: 5px; margin-top: 9px; }
+  .progress i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); transition: all .3s; }
+  .progress i.on { background: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,.7); }
+  .plabel { margin-top: 6px; font-size: 12px; color: var(--muted); }
+
+  /* ---------- Steps ---------- */
+  .wrap { max-width: 560px; margin: 20px auto 0; padding: 0 14px; }
+  .step { position: relative; padding-left: 44px; padding-bottom: 18px; }
+  .step::before { content: ""; position: absolute; left: 14px; top: 32px; bottom: 0; width: 2px; background: var(--line); }
+  .step:last-child::before { display: none; }
+  .step.done::before { background: var(--cyan); opacity: .6; }
+  .badge { position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--panel); border: 2px solid var(--line); color: var(--muted); font-weight: 700; font-size: 13px; transition: all .3s; }
+  .step.done .badge { background: var(--cyan); border-color: var(--cyan); color: #04202a; box-shadow: 0 0 12px rgba(34,211,238,.5); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 15px; }
+  .panel h2 { margin: 0 0 2px; font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', 'Hind', sans-serif; }
+  .hi { display: block; font-weight: 500; font-size: 12.5px; color: var(--muted); }
+  label.f { display: block; margin-top: 13px; font-size: 13.5px; font-weight: 600; }
+  label.f .hi { margin-bottom: 4px; }
+  input[type="text"], select {
+    width: 100%; padding: 12px; font-size: 15px; font-family: inherit; color: var(--text);
+    background: var(--panel2); border: 1.5px solid var(--line); border-radius: 10px; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  input[type="text"]::placeholder { color: #5f7599; }
+  input[type="text"]:focus, select:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-soft); }
+  select option { background: var(--panel2); color: var(--text); }
+
+  .cycle-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .cycle-row input { position: absolute; opacity: 0; pointer-events: none; }
+  .cycle-row label { display: block; text-align: center; padding: 11px 4px; border-radius: 10px; border: 1.5px solid var(--line);
+    background: var(--panel2); cursor: pointer; font-size: 13px; font-weight: 600; line-height: 1.25; transition: all .15s; }
+  .cycle-row input:checked + label { border-color: var(--cyan); background: var(--cyan-soft); color: var(--cyan); }
+  .cycle-row input:focus-visible + label, .pick:focus-visible, .rm:focus-visible, .chip:focus-visible, button:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 5px 11px; font-size: 12px; font-family: inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip:hover { border-color: var(--cyan); color: var(--cyan); }
+  .chips-label { margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .count { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ---------- Upload ---------- */
+  #dropzone { transition: border-color .15s, background .15s; }
+  #dropzone.drag { border-color: var(--cyan); background: #11304a; }
+  .pick-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .pick { background: var(--cyan-soft); color: var(--cyan); border: 1.5px solid rgba(34,211,238,.35); border-radius: 12px;
+    padding: 12px 4px 10px; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 700; text-align: center; line-height: 1.25; }
+  .pick:active { transform: scale(.97); }
+  .pick .ic { display: block; font-size: 22px; margin-bottom: 3px; }
+  .pick .hi { color: var(--cyan); opacity: .75; font-size: 11px; }
+  input[type="file"] { display: none; }
+  .droptip { margin-top: 8px; font-size: 11.5px; color: var(--muted); text-align: center; }
+
+  .meter { margin-top: 14px; }
+  .meter-top { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
+  .meter-top b { color: var(--text); font-family: var(--mono); font-weight: 600; }
+  .meter-bar { height: 7px; border-radius: 4px; background: var(--line); margin-top: 5px; overflow: hidden; }
+  .meter-fill { height: 100%; width: 0; background: var(--cyan); transition: width .3s, background .3s; }
+  .meter.over .meter-fill { background: var(--red); }
+  .meter.over .meter-top b { color: var(--red); }
+  .saved { margin-top: 6px; font-size: 12px; color: var(--mint); min-height: 16px; }
+
+  .file-head { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13px; font-weight: 600; }
+  .clear-all { background: none; border: none; color: var(--red); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 4px 2px; }
+  #fileList { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .empty { border: 1.5px dashed var(--line); border-radius: 12px; padding: 18px 12px; text-align: center; font-size: 13px; color: var(--muted); }
+  .file { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: var(--panel2); animation: pop .18s ease-out; }
+  @keyframes pop { from { transform: scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+  .thumb { width: 48px; height: 48px; border-radius: 8px; flex: none; background: var(--line); display: grid; place-items: center; overflow: hidden; font-weight: 700; font-size: 11px; color: var(--red); position: relative; }
+  .thumb.pdf { background: var(--red-soft); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.busy::after { content: ""; position: absolute; inset: 0; background: rgba(11,18,32,.6); }
+  .thumb.busy::before { content: ""; position: absolute; z-index: 2; width: 18px; height: 18px; border: 2px solid var(--cyan); border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; left: 15px; top: 15px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .finfo { flex: 1; min-width: 0; }
+  .fname { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fsize { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .fsize .cut { color: var(--mint); font-weight: 600; }
+  .rm { flex: none; width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid rgba(248,113,113,.4); background: var(--red-soft); color: var(--red); font-size: 17px; font-weight: 700; cursor: pointer; }
+  .rm:hover { background: var(--red); color: #1a0a0a; }
+  .notice { margin-top: 10px; font-size: 12.5px; color: var(--amber); background: rgba(251,191,36,.1); border-radius: 8px; padding: 8px 10px; display: none; }
+  .notice.show { display: block; }
+
+  /* ---------- Submit bar ---------- */
+  .submitbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(11,18,32,.96); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line); padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .submitbar-inner { max-width: 560px; margin: auto; }
+  #hint { font-size: 12.5px; color: var(--muted); margin-bottom: 6px; text-align: center; min-height: 18px; }
+  #hint.ready { color: var(--mint); }
+  #submitBtn { width: 100%; border: none; border-radius: 12px; padding: 13px 10px; cursor: pointer; font-family: 'Space Grotesk', 'Hind', sans-serif;
+    font-size: 16px; font-weight: 700; line-height: 1.25; background: var(--cyan); color: #04202a; box-shadow: 0 0 18px rgba(34,211,238,.35); }
+  #submitBtn .hi { color: #0a4a5c; font-family: 'Hind', sans-serif; font-size: 12px; }
+  #submitBtn:disabled { background: var(--line); color: #6b7fa3; box-shadow: none; cursor: not-allowed; }
+  #submitBtn:disabled .hi { color: #6b7fa3; }
+
+  /* ---------- Transmission overlay ---------- */
+  #overlay { position: fixed; inset: 0; z-index: 50; background: rgba(5,9,18,.88); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; padding: 18px; }
+  #overlay.show { display: flex; }
+  .console { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .console h3 { margin: 0 0 14px; font-family: 'Space Grotesk', 'Hind', sans-serif; font-size: 17px; }
+  .stage { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; color: var(--muted); }
+  .stage .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 11px; flex: none; }
+  .stage.active { color: var(--text); }
+  .stage.active .dot { border-color: var(--cyan); border-top-color: transparent; animation: spin .8s linear infinite; }
+  .stage.ok { color: var(--text); }
+  .stage.ok .dot { background: var(--mint); border-color: var(--mint); color: #04201a; }
+  .stage.bad { color: var(--red); }
+  .stage.bad .dot { background: var(--red); border-color: var(--red); color: #1a0a0a; }
+  .bar { height: 6px; border-radius: 3px; background: var(--line); margin: 12px 0 4px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--cyan); transition: width .25s; }
+  .receipt { display: none; margin-top: 14px; border: 1px dashed var(--mint); border-radius: 12px; padding: 12px 14px; background: rgba(52,211,153,.07); }
+  .receipt.show { display: block; }
+  .receipt .big { font-family: var(--mono); font-size: 18px; color: var(--mint); letter-spacing: .5px; }
+  .receipt dl { margin: 10px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+  .receipt dt { color: var(--muted); }
+  .receipt dd { margin: 0; text-align: right; word-break: break-word; }
+  .console .actions { display: none; margin-top: 14px; gap: 8px; }
+  .console .actions.show { display: flex; }
+  .console .actions button { flex: 1; padding: 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel2); color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .console .actions button.primary { background: var(--cyan); border-color: var(--cyan); color: #04202a; }
+  .errtxt { margin-top: 10px; font-size: 13px; color: var(--red); display: none; }
+  .errtxt.show { display: block; }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } .topbar::after { display: none; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="row">
+      <h1>Field Attendance Portal <small>फील्ड अटेंडेंस पोर्टल</small></h1>
+      <div class="clock" id="clock">--:--:--<span id="dateTxt">--</span></div>
+    </div>
+    <div class="net" id="net"><i></i><span id="netTxt">Online / ऑनलाइन</span></div>
+    <div class="progress" id="progress"><i></i><i></i><i></i><i></i></div>
+    <div class="plabel" id="plabel">0 of 4 done / 4 में से 0 पूरे</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="step" id="step1">
+    <div class="badge">1</div>
+    <div class="panel">
+      <h2>Your name <span class="hi">आपका नाम</span></h2>
+      <label class="f" for="foName">Field Officer (FO) Name <span class="hi">फील्ड ऑफिसर का नाम</span></label>
+      <input type="text" id="foName" placeholder="Enter your full name / अपना पूरा नाम लिखें" autocomplete="name">
+    </div>
+  </section>
+
+  <section class="step" id="step2">
+    <div class="badge">2</div>
+    <div class="panel">
+      <h2>Attendance cycle <span class="hi">अटेंडेंस साइकिल चुनें</span></h2>
+      <div class="cycle-row">
+        <div><input type="radio" name="cycle" id="cy1" value="21ST TO 20TH"><label for="cy1">21ST TO<br>20TH</label></div>
+        <div><input type="radio" name="cycle" id="cy2" value="25TH TO 26TH"><label for="cy2">25TH TO<br>26TH</label></div>
+        <div><input type="radio" name="cycle" id="cy3" value="1 TO 28,30,31"><label for="cy3">1 TO<br>28,30,31</label></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="step3">
+    <div class="badge">3</div>
+    <div class="panel">
+      <h2>Client <span class="hi">क्लाइंट का नाम चुनें</span></h2>
+      <div id="recentWrap" style="display:none;">
+        <div class="chips-label">Recent / हाल के क्लाइंट</div>
+        <div class="chips" id="recentChips"></div>
+      </div>
+      <label class="f" for="clientSearch">Search client <span class="hi">नाम टाइप करके खोजें</span></label>
+      <input type="text" id="clientSearch" placeholder="e.g. TATA, HDFC, INCRED..." autocomplete="off">
+      <label class="f" for="clientName" style="margin-top:10px;">Select client <span class="hi">लिस्ट से चुनें</span></label>
+      <select id="clientName"></select>
+      <div class="count" id="clientCount"></div>
+    </div>
+  </section>
+
+  <section class="step" id="step4">
+    <div class="badge">4</div>
+    <div class="panel" id="dropzone">
+      <h2>Attendance files <span class="hi">अटेंडेंस फाइल या फोटो अपलोड करें</span></h2>
+
+      <div class="pick-grid">
+        <button type="button" class="pick" onclick="$('cameraInput').click()"><span class="ic">📸</span>Camera<span class="hi">कैमरे से फोटो</span></button>
+        <button type="button" class="pick" onclick="$('scannerInput').click()"><span class="ic">📄</span>Scan<span class="hi">PDF / इमेज</span></button>
+        <button type="button" class="pick" onclick="$('driveInput').click()"><span class="ic">📁</span>Device<span class="hi">ड्राइव / डिवाइस</span></button>
+      </div>
+      <div class="droptip">Photos are auto-compressed. Desktop: drag &amp; drop files here.<br>फोटो अपने-आप छोटी हो जाती हैं।</div>
+
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handleFiles(this)">
+      <input type="file" id="scannerInput" accept="image/*,application/pdf" onchange="handleFiles(this)">
+      <input type="file" id="driveInput" multiple accept="image/*,application/pdf" onchange="handleFiles(this)">
+
+      <div class="meter" id="meter">
+        <div class="meter-top"><span>Total size / कुल साइज़</span><span><b id="sizeText">0.00 MB</b> / 25 MB</span></div>
+        <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
+        <div class="saved" id="savedTxt"></div>
+      </div>
+
+      <div class="file-head" id="fileHead" style="display:none;">
+        <span id="fileCount"></span>
+        <button type="button" class="clear-all" onclick="clearAll()">Remove all / सब हटाएं</button>
+      </div>
+      <ul id="fileList"></ul>
+      <div class="notice" id="dupNotice"></div>
+    </div>
+  </section>
+</main>
+
+<div class="submitbar">
+  <div class="submitbar-inner">
+    <div id="hint"></div>
+    <button id="submitBtn" onclick="submitData()" disabled>Submit &amp; Send Mail<br><span class="hi">सबमिट करें और मेल भेजें</span></button>
+  </div>
+</div>
+
+<!-- Transmission console -->
+<div id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+  <div class="console">
+    <h3 id="ovTitle">Sending attendance / अटेंडेंस भेजी जा रही है</h3>
+    <div class="stage" id="st1"><span class="dot"></span>Reading files / फाइलें पढ़ी जा रही हैं</div>
+    <div class="stage" id="st2"><span class="dot"></span>Packing data / डेटा पैक हो रहा है</div>
+    <div class="stage" id="st3"><span class="dot"></span>Sending to server / सर्वर पर भेजा जा रहा है</div>
+    <div class="bar"><i id="ovBar"></i></div>
+    <div class="errtxt" id="errTxt"></div>
+    <div class="receipt" id="receipt">
+      <div class="big" id="refId">—</div>
+      <dl>
+        <dt>FO</dt><dd id="rFo"></dd>
+        <dt>Cycle</dt><dd id="rCycle"></dd>
+        <dt>Client</dt><dd id="rClient"></dd>
+        <dt>Files</dt><dd id="rFiles"></dd>
+        <dt>Time</dt><dd id="rTime"></dd>
+      </dl>
+    </div>
+    <div class="actions" id="ovActions">
+      <button type="button" id="ovClose">Back / वापस</button>
+      <button type="button" class="primary" id="ovNew">New entry / नई एंट्री</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Apne Google Apps Script Web App Deployment URL ko yahan paste karein
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyqhLgfFNS8UYPwk0sj0gppFMnYr0VOrcspNP47czBsyi744q0RbV-Xv43l0llIA7YE/exec";
+  const MAX_SIZE = 25 * 1024 * 1024;
+  const IMG_MAX_SIDE = 1800;     // photos are scaled down to this longest side
+  const IMG_QUALITY = 0.75;      // JPEG quality
+
+  const CLIENTS = [
+    "INDUSIND BANK LIMITED","ZOMATO HYPERPURE PRIVATE LIMITED","TATA ADVANCED SYSTEMS LIMITED",
+    "UJJIVAN SMALL FINANCE BANK LTD","ICICI PRUDENTIAL ASSET MANAGEMENT COMPANY LIMITED",
+    "HDB FINANCIAL SERVICES LIMITED","TATA CONSULTING ENGINEERS LIMITED","PNB HOUSING FINANCE LIMITED",
+    "AXIS ASSET MANAGEMENT COMPANY LIMITED","GIA INDIA LABORATORY PVT. LTD.","TATA CAPITAL LIMITED",
+    "AAVAS FINANCIERS LIMITED","KOTAK SECURITIES LIMITED","MAHINDRA LOGISTICS LIMITED",
+    "GRIHUM HOUSING FINANCE LIMITED","HDFC LIFE INSURANCE COMPANY LIMITED",
+    "BHARTI AXA LIFE INSURANCE COMPANY LIMITED","PNB METLIFE INDIA INSURANCE COMPANY LIMITED",
+    "TATA CAPITAL HOUSING FINANCE LIMITED","ARMAN LOGISTICS PARK PRIVATE LIMITED",
+    "ONE97 COMMUNICATIONS LTD(PAYTM)","SAMMAAN CAPITAL LIMITED","INCRED FINANCIAL SERVICES LIMITED",
+    "KISETSU SAISON FINANCE INDIA PRIVATE LIMITED","PROTIUM FINANCE LIMITED",
+    "TATA COMMUNITY INITIATIVES TRUST","CREDILA FINANCIAL SERVICES LIMITED","RESERVE",
+    "VIBRANCE PROCON PVT LTD","UNIVERSAL SOMPO GENERAL INSURANCE CO. LTD","METTLER TOLEDO INDIA PVT. LTD.",
+    "RELIGARE BROKING LIMITED","TAJ SKYLINE","ZURICH KOTAK GENERAL INSURANCE COMPANY (INDIA) LIMITED",
+    "AUXILO FINSERVE PRIVATE LIMITED","CAPRI GLOBAL CAPITAL LIMITED","I-PROCESS SERVICES (INDIA) PVT LTD",
+    "INCRED MARKETS LIMITED","INCRED WEALTH & INVESTMENT SERVICES PVT. LTD.",
+    "VASTU HOUSING FINANCE CORPORATION LTD","WEALTH INDIA FINANCIAL SERVICES PRIVATE LIMITED"
+  ];
+
+  const $ = id => document.getElementById(id);
+  let items = [];          // { file, origSize, busy, url }
+  let sending = false;
+
+  /* ---------- tiny safe storage ---------- */
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  /* ---------- clock + network ---------- */
+  function tick() {
+    const d = new Date();
+    $("clock").firstChild.nodeValue = d.toLocaleTimeString("en-IN", { hour12: false });
+    $("dateTxt").textContent = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+  setInterval(tick, 1000); tick();
+  function netUpdate() {
+    const on = navigator.onLine;
+    $("net").classList.toggle("off", !on);
+    $("netTxt").textContent = on ? "Online / ऑनलाइन" : "Offline, check internet / इंटरनेट बंद है";
+    refresh();
+  }
+  window.addEventListener("online", netUpdate);
+  window.addEventListener("offline", netUpdate);
+
+  /* ---------- client list ---------- */
+  function buildClientOptions() {
+    const q = $("clientSearch").value.trim().toUpperCase();
+    const sel = $("clientName");
+    const current = sel.value;
+    const list = CLIENTS.filter(c => c.includes(q));
+    sel.innerHTML = "";
+    const ph = document.createElement("option");
+    ph.value = ""; ph.disabled = true;
+    ph.textContent = list.length ? "-- Select Client / क्लाइंट चुनें --" : "-- No match / कोई क्लाइंट नहीं मिला --";
+    sel.appendChild(ph);
+    list.forEach(c => { const o = document.createElement("option"); o.value = c; o.textContent = c; sel.appendChild(o); });
+    sel.value = list.includes(current) ? current : "";
+    if (!sel.value) ph.selected = true;
+    $("clientCount").textContent = q
+      ? list.length + " of " + CLIENTS.length + " shown / " + list.length + " क्लाइंट दिख रहे हैं"
+      : "Total " + CLIENTS.length + " clients / कुल " + CLIENTS.length + " क्लाइंट";
+    refresh();
+  }
+
+  function loadRecent() {
+    let arr = [];
+    try { arr = JSON.parse(store.get("recentClients") || "[]"); } catch (e) {}
+    arr = arr.filter(c => CLIENTS.includes(c)).slice(0, 4);
+    const box = $("recentChips");
+    box.innerHTML = "";
+    arr.forEach(c => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.textContent = c; b.title = c;
+      b.onclick = () => { $("clientSearch").value = ""; buildClientOptions(); $("clientName").value = c; refresh(); };
+      box.appendChild(b);
+    });
+    $("recentWrap").style.display = arr.length ? "block" : "none";
+  }
+  function pushRecent(c) {
+    let arr = [];
+    try { arr = JSON.parse(store.get("recentClients") || "[]"); } catch (e) {}
+    arr = [c].concat(arr.filter(x => x !== c)).slice(0, 4);
+    store.set("recentClients", JSON.stringify(arr));
+  }
+
+  /* ---------- image compression ---------- */
+  function compressImage(file) {
+    return new Promise(resolve => {
+      if (!file.type.startsWith("image/") || file.type === "image/gif") return resolve(file);
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          const scale = Math.min(1, IMG_MAX_SIDE / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          const ctx = c.getContext("2d");
+          ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          c.toBlob(blob => {
+            URL.revokeObjectURL(url);
+            if (!blob || blob.size >= file.size) return resolve(file);   // keep original if not smaller
+            const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+            resolve(new File([blob], newName, { type: "image/jpeg", lastModified: file.lastModified }));
+          }, "image/jpeg", IMG_QUALITY);
+        } catch (e) { URL.revokeObjectURL(url); resolve(file); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  /* ---------- file handling ---------- */
+  async function addFiles(fileList) {
+    const skipped = [];
+    const fresh = [];
+    for (const f of Array.from(fileList)) {
+      const ok = f.type.startsWith("image/") || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+      if (!ok) { skipped.push(f.name + " (not PDF/image)"); continue; }
+      const dup = items.some(x => x.key === f.name + "|" + f.size + "|" + f.lastModified);
+      if (dup) { skipped.push(f.name); continue; }
+      const it = { key: f.name + "|" + f.size + "|" + f.lastModified, file: f, origSize: f.size, busy: f.type.startsWith("image/"), url: null };
+      if (it.busy) it.url = URL.createObjectURL(f);
+      items.push(it); fresh.push(it);
+    }
+    const n = $("dupNotice");
+    if (skipped.length) {
+      n.textContent = "Skipped / छोड़ी गईं: " + skipped.join(", ");
+      n.classList.add("show");
+    } else n.classList.remove("show");
+    renderFiles();
+
+    for (const it of fresh) {
+      if (!it.busy) continue;
+      const out = await compressImage(it.file);
+      if (!items.includes(it)) continue;   // removed while compressing
+      it.file = out; it.busy = false;
+      renderFiles();
+    }
+  }
+  function handleFiles(input) { const fl = Array.from(input.files); input.value = ""; addFiles(fl); }
+
+  function removeFile(i) {
+    const it = items[i];
+    if (it.url) URL.revokeObjectURL(it.url);
+    items.splice(i, 1);
+    $("dupNotice").classList.remove("show");
+    if (navigator.vibrate) navigator.vibrate(15);
+    renderFiles();
+  }
+  function clearAll() {
+    if (!confirm("Remove all files?\nसभी फाइलें हटाएं?")) return;
+    items.forEach(it => it.url && URL.revokeObjectURL(it.url));
+    items = [];
+    $("dupNotice").classList.remove("show");
+    renderFiles();
+  }
+  const mb = b => (b / 1048576).toFixed(2);
+
+  function renderFiles() {
+    const list = $("fileList");
+    list.innerHTML = "";
+    if (!items.length) list.innerHTML = '<li class="empty">No files selected.<br>कोई फाइल सेलेक्ट नहीं की गई है।</li>';
+
+    let total = 0, orig = 0;
+    items.forEach((it, i) => {
+      total += it.file.size; orig += it.origSize;
+      const li = document.createElement("li"); li.className = "file";
+
+      const isImg = it.file.type.startsWith("image/");
+      const th = document.createElement("div");
+      th.className = "thumb" + (isImg ? "" : " pdf") + (it.busy ? " busy" : "");
+      if (isImg) { const im = document.createElement("img"); im.alt = ""; im.src = it.url; th.appendChild(im); }
+      else th.textContent = "PDF";
+
+      const info = document.createElement("div"); info.className = "finfo";
+      const nm = document.createElement("div"); nm.className = "fname"; nm.textContent = it.file.name;
+      const sz = document.createElement("div"); sz.className = "fsize";
+      if (it.busy) sz.textContent = "Optimizing... / छोटी की जा रही है";
+      else if (it.file.size < it.origSize) {
+        const pct = Math.round((1 - it.file.size / it.origSize) * 100);
+        sz.innerHTML = mb(it.origSize) + " → " + mb(it.file.size) + " MB <span class='cut'>-" + pct + "%</span>";
+      } else sz.textContent = mb(it.file.size) + " MB";
+      info.appendChild(nm); info.appendChild(sz);
+
+      const rm = document.createElement("button");
+      rm.type = "button"; rm.className = "rm"; rm.innerHTML = "&#10005;";
+      rm.setAttribute("aria-label", "Remove " + it.file.name); rm.title = "Remove / हटाएं";
+      rm.onclick = () => removeFile(i);
+
+      li.appendChild(th); li.appendChild(info); li.appendChild(rm);
+      list.appendChild(li);
+    });
+
+    $("fileHead").style.display = items.length ? "flex" : "none";
+    $("fileCount").textContent = "Selected files / चयनित फाइलें (" + items.length + ")";
+    $("sizeText").textContent = mb(total) + " MB";
+    $("meterFill").style.width = Math.min(100, total / MAX_SIZE * 100) + "%";
+    $("meter").classList.toggle("over", total > MAX_SIZE);
+    const saved = orig - total;
+    $("savedTxt").textContent = saved > 50 * 1024 ? "Saved " + mb(saved) + " MB by compression / कंप्रेशन से " + mb(saved) + " MB बचे" : "";
+    refresh();
+  }
+
+  /* drag & drop (desktop) */
+  const dz = $("dropzone");
+  ["dragenter", "dragover"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("drag"); }));
+  dz.addEventListener("drop", e => { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+
+  /* ---------- progress / state ---------- */
+  function refresh() {
+    const total = items.reduce((s, it) => s + it.file.size, 0);
+    const busy = items.some(it => it.busy);
+    const cyc = document.querySelector('input[name="cycle"]:checked');
+    const flags = [
+      $("foName").value.trim().length > 0,
+      !!cyc,
+      !!$("clientName").value,
+      items.length > 0 && total <= MAX_SIZE
+    ];
+    const done = flags.filter(Boolean).length;
+    document.querySelectorAll("#progress i").forEach((el, i) => el.classList.toggle("on", flags[i]));
+    ["step1", "step2", "step3", "step4"].forEach((id, i) => $(id).classList.toggle("done", flags[i]));
+    $("plabel").textContent = done + " of 4 done / 4 में से " + done + " पूरे";
+
+    let hint = "", ready = false;
+    if (!flags[0]) hint = "Enter FO name / FO का नाम लिखें";
+    else if (!flags[1]) hint = "Choose a cycle / साइकिल चुनें";
+    else if (!flags[2]) hint = "Choose a client / क्लाइंट चुनें";
+    else if (total > MAX_SIZE) hint = "Over 25 MB, remove some files / 25 MB से ज़्यादा, फाइलें हटाएं";
+    else if (!items.length) hint = "Add at least one file / कम से कम एक फाइल जोड़ें";
+    else if (busy) hint = "Optimizing photos... / फोटो छोटी हो रही हैं...";
+    else if (!navigator.onLine) hint = "No internet / इंटरनेट नहीं है";
+    else { hint = "Ready to send / भेजने के लिए तैयार"; ready = true; }
+    $("hint").textContent = hint;
+    $("hint").classList.toggle("ready", ready);
+    $("submitBtn").disabled = !ready || sending;
+  }
+  $("foName").addEventListener("input", refresh);
+  $("clientName").addEventListener("change", refresh);
+  $("clientSearch").addEventListener("input", buildClientOptions);
+  document.querySelectorAll('input[name="cycle"]').forEach(r => r.addEventListener("change", refresh));
+
+  /* ---------- submit ---------- */
+  function stage(n, state) {
+    const el = $("st" + n);
+    el.className = "stage" + (state ? " " + state : "");
+    el.querySelector(".dot").textContent = state === "ok" ? "✓" : state === "bad" ? "!" : "";
+  }
+  function toBase64(file) {
+    return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+  }
+  function makeRef() {
+    const d = new Date(), p = n => String(n).padStart(2, "0");
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return "ATT-" + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes()) + "-" + rnd;
+  }
+
+  async function submitData() {
+    const foName = $("foName").value.trim();
+    const cyc = document.querySelector('input[name="cycle"]:checked');
+    const attendanceCycle = cyc ? cyc.value : "";
+    const clientName = $("clientName").value;
+    if (!foName || !attendanceCycle || !clientName || !items.length) {
+      alert("Please fill in all details (FO Name, Cycle, Client Name)!\nकृपया सभी विवरण चुनें या भरें!");
+      return;
+    }
+
+    sending = true; refresh();
+    $("overlay").classList.add("show");
+    $("receipt").classList.remove("show");
+    $("ovActions").classList.remove("show");
+    $("errTxt").classList.remove("show");
+    $("ovTitle").textContent = "Sending attendance / अटेंडेंस भेजी जा रही है";
+    $("ovBar").style.width = "0%";
+    [1, 2, 3].forEach(n => stage(n, ""));
+
+    const ref = makeRef();
+    const sentAt = new Date();
+    const count = items.length;
+
+    try {
+      stage(1, "active");
+      const filesPayload = [];
+      for (let i = 0; i < items.length; i++) {
+        const f = items[i].file;
+        filesPayload.push({ name: f.name, data: await toBase64(f) });
+        $("ovBar").style.width = Math.round(((i + 1) / items.length) * 60) + "%";
+      }
+      stage(1, "ok");
+
+      stage(2, "active");
+      const body = JSON.stringify({ foName, attendanceCycle, clientName, files: filesPayload });
+      $("ovBar").style.width = "75%";
+      await new Promise(r => setTimeout(r, 250));
+      stage(2, "ok");
+
+      stage(3, "active");
+      await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body });
+      stage(3, "ok");
+      $("ovBar").style.width = "100%";
+
+      // remember for next time
+      store.set("foName", foName);
+      pushRecent(clientName);
+
+      $("ovTitle").textContent = "✅ Attendance sent / अटेंडेंस भेज दी गई";
+      $("refId").textContent = ref;
+      $("rFo").textContent = foName;
+      $("rCycle").textContent = attendanceCycle;
+      $("rClient").textContent = clientName;
+      $("rFiles").textContent = count + " file" + (count > 1 ? "s" : "");
+      $("rTime").textContent = sentAt.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true });
+      $("receipt").classList.add("show");
+      $("ovClose").style.display = "none";
+      $("ovActions").classList.add("show");
+      if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
+    } catch (err) {
+      [1, 2, 3].forEach(n => { if ($("st" + n).classList.contains("active")) stage(n, "bad"); });
+      $("ovTitle").textContent = "❌ Not sent / नहीं भेजा जा सका";
+      $("errTxt").textContent = "Submission error. Check your connection and try again. Your files are still here. / कनेक्शन जांचें और फिर कोशिश करें। आपकी फाइलें सुरक्षित हैं।";
+      $("errTxt").classList.add("show");
+      $("ovClose").style.display = "";
+      $("ovActions").classList.add("show");
+    } finally {
+      sending = false; refresh();
+    }
+  }
+
+  $("ovClose").onclick = () => $("overlay").classList.remove("show");
+  $("ovNew").onclick = () => {
+    $("overlay").classList.remove("show");
+    items.forEach(it => it.url && URL.revokeObjectURL(it.url));
+    items = [];
+    document.querySelectorAll('input[name="cycle"]').forEach(r => r.checked = false);
+    $("clientSearch").value = "";
+    buildClientOptions(); loadRecent(); renderFiles();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  /* ---------- init ---------- */
+  $("foName").value = store.get("foName") || "";
+  buildClientOptions();
+  loadRecent();
+  renderFiles();
+  netUpdate();
+</script>
+</body>
+</html>
